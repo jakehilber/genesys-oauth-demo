@@ -1,0 +1,180 @@
+Here’s a simple, clean starter repository structure + basic OAuth2 flow scaffold you can use for a GitHub + Genesys Cloud integration. This is intentionally minimal so you can wire in your own client ID/secret and adjust flows (client credentials vs implicit vs auth code).
+________________________________________
+📁 Recommended Repo Structure
+genesys-oauth-demo/
+│
+├── public/
+│   ├── index.html          # Main UI
+│   ├── styles.css          # Optional styling
+│   └── app.js              # Front-end OAuth logic
+│
+├── server/
+│   ├── server.js           # Node backend to proxy token exchange
+│   └── config.js           # Config (client ID, secret, region)
+│
+├── .env                    # Secrets (never commit)
+├── package.json
+└── README.md
+________________________________________
+🔑 Key Concept (Important for Genesys)
+•	Genesys Cloud OAuth requires token exchange on a backend (for Authorization Code flow)
+•	You should NOT expose client secret in frontend
+•	So: 
+o	index.html → login button + redirect handler
+o	server.js → exchanges code → access_token
+________________________________________
+✅ Minimal index.html
+Put this in: public/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Genesys OAuth2 Demo</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <h1>Genesys Cloud OAuth2 Demo</h1>
+
+  <button id="loginBtn">Login with Genesys</button>
+
+  <div id="result"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
+________________________________________
+✅ Minimal Frontend JS (public/app.js)
+const clientId = "YOUR_CLIENT_ID";
+const redirectUri = "http://localhost:3000/callback";
+const region = "us_east_1"; // adjust (e.g., eu_west_1)
+
+// Genesys authorize endpoint
+const authUrl = https://login.${region}.pure.cloud/oauth/authorize;
+
+document.getElementById("loginBtn").addEventListener("click", () => {
+  const url =
+    ${authUrl}?response_type=code +
+    &amp;client_id=${clientId} +
+    &amp;redirect_uri=${encodeURIComponent(redirectUri)};
+
+  window.location.href = url;
+});
+
+// Handle redirect back with ?code=
+const params = new URLSearchParams(window.location.search);
+const code = params.get("code");
+
+if (code) {
+  fetch(/api/token?code=${code})
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById("result").innerText =
+        JSON.stringify(data, null, 2);
+    })
+    .catch(err => console.error(err));
+}
+________________________________________
+✅ Minimal Backend (server/server.js)
+const express = require("express");
+const fetch = require("node-fetch");
+require("dotenv").config();
+
+const app = express();
+const PORT = 3000;
+
+const region = process.env.GENESYS_REGION;
+const clientId = process.env.CLIENT_ID;
+const clientSecret = process.env.CLIENT_SECRET;
+const redirectUri = process.env.REDIRECT_URI;
+
+// Serve static files
+app.use(express.static("public"));
+
+// Endpoint to exchange auth code for token
+app.get("/api/token", async (req, res) => {
+  const code = req.query.code;
+
+  try {
+    const tokenResponse = await fetch(
+      https://login.${region}.pure.cloud/oauth/token,
+      {
+        method: "POST",
+        headers: {
+          "Authorization":
+            "Basic " +
+            Buffer.from(clientId + ":" + clientSecret).toString("base64"),
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          code: code,
+          redirect_uri: redirectUri
+        })
+      }
+    );
+
+    const data = await tokenResponse.json();
+    res.json(data);
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(Server running on http://localhost:${PORT});
+});
+________________________________________
+✅ Config Example (server/config.js or .env)
+.env (recommended):
+CLIENT_ID=your_client_id
+CLIENT_SECRET=your_client_secret
+REDIRECT_URI=http://localhost:3000/callback
+GENESYS_REGION=us_east_1
+________________________________________
+✅ Optional CSS (public/styles.css)
+body {
+  font-family: Arial, sans-serif;
+  padding: 40px;
+}
+
+button {
+  padding: 10px 20px;
+  font-size: 16px;
+}
+________________________________________
+📦 package.json (minimal)
+{
+  "name": "genesys-oauth-demo",
+  "version": "1.0.0",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "node-fetch": "^2.6.7",
+    "dotenv": "^16.0.0"
+  }
+}
+________________________________________
+🚀 How It Works
+1.	User clicks Login
+2.	Redirect → Genesys /authorize
+3.	User logs in
+4.	Redirect back with ?code=
+5.	Frontend calls /api/token
+6.	Backend exchanges → access token
+7.	Token returned to UI
+________________________________________
+👍 Next Steps (you’ll likely want)
+•	Store access token securely (not just print it)
+•	Add refresh token logic
+•	Call Genesys APIs (https://api.<region>.pure.cloud)
+•	Add logout flow
+•	Add PKCE if strictly frontend
+________________________________________
+If you want, I can: ✅ Convert this to a pure frontend PKCE flow (no backend)
+✅ Add a Genesys API example (users/conversations)
+✅ Turn this into a React app ready for production
+
