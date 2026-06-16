@@ -1,15 +1,16 @@
+
 const clientId = "YOUR_CLIENT_ID";
 const redirectUri = "http://localhost:3000/callback";
-const region = "us_east_1"; // adjust (e.g., eu_west_1)
+const region = "us-east-1"; // ✅ FIXED format
 
-// Genesys authorize endpoint
-const authUrl = https://login.${region}.pure.cloud/oauth/authorize;
+// ✅ FIXED template string
+const authUrl = `https://login.${region}.pure.cloud/oauth/authorize`;
 
 document.getElementById("loginBtn").addEventListener("click", () => {
   const url =
-    ${authUrl}?response_type=code +
-    &amp;client_id=${clientId} +
-    &amp;redirect_uri=${encodeURIComponent(redirectUri)};
+    `${authUrl}?response_type=code` +
+    `&client_id=${clientId}` +
+    `&redirect_uri=${encodeURIComponent(redirectUri)}`;
 
   window.location.href = url;
 });
@@ -19,9 +20,17 @@ const params = new URLSearchParams(window.location.search);
 const code = params.get("code");
 
 if (code) {
-  fetch(/api/token?code=${code})
+  fetch(`/api/token?code=${code}`)
     .then(res => res.json())
     .then(data => {
+
+      // ✅ ✅ ADD REDIRECT HERE
+      if (data.access_token) {
+        window.location.href =
+          "success.html?token=" + encodeURIComponent(data.access_token);
+      }
+
+      // (optional fallback display)
       document.getElementById("result").innerText =
         JSON.stringify(data, null, 2);
     })
