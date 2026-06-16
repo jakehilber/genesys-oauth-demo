@@ -6,13 +6,20 @@
 </head>
 <body style="text-align:center; font-family: Arial; padding:40px;">
   <h1 style="color: green;">✅ Login Successful!</h1>
-  <p>Welcome! Your OAuth2 authentication worked.</p>
+  <p>You are now authenticated with Genesys Cloud.</p>
 
-  <pre id="tokenData"></pre>
+  <button onclick="showToken()">Show Access Token</button>
+
+  <pre id="tokenData" style="margin-top:20px;"></pre>
 
   <script>
     const params = new URLSearchParams(window.location.search);
-    document.getElementById("tokenData").innerText = params.toString();
+    const token = params.get("token");
+
+    function showToken() {
+      document.getElementById("tokenData").innerText =
+        token ? token : "No token found";
+    }
   </script>
 </body>
 </html>
